@@ -14,8 +14,10 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
-var db *gorm.DB
-var err error
+var (
+	db  *gorm.DB
+	err error
+)
 
 type User struct {
 	Gid    string   `json:"gid" gorm:"PRIMARY_KEY"`
@@ -36,10 +38,10 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newUser User
+	newUser := User{}
 	json.Unmarshal(reqBody, &newUser)
 
-	var existingUser User
+	existingUser := User{}
 	if !db.First(&existingUser, "gid=?", newUser.Gid).RecordNotFound() {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -52,9 +54,9 @@ func register(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) {
-	gid := r.URL.Query()["gid"]
+	gid := r.URL.Query().Get("gid")
 
-	var user User
+	user := User{}
 	if db.Preload("Groups").First(&user, "gid=?", gid).RecordNotFound() {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -71,7 +73,7 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var creatingUser User
+	creatingUser := User{}
 	json.Unmarshal(reqBody, &creatingUser)
 
 	if db.First(&creatingUser, "gid=?", creatingUser.Gid).RecordNotFound() {
@@ -89,7 +91,7 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 func getGroup(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query()["id"]
 
-	var group Group
+	group := Group{}
 	if db.Preload("Users").First(&group, "id=?", id).RecordNotFound() {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -100,22 +102,22 @@ func getGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func joinGroup(w http.ResponseWriter, r *http.Request) {
-	user_gid, ok1 := r.URL.Query()["user_gid"]
-	group_id, ok2 := r.URL.Query()["group_id"]
+	userGID, ok1 := r.URL.Query()["user_gid"]
+	groupID, ok2 := r.URL.Query()["group_id"]
 
 	if !ok1 || !ok2 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	var user User
-	if db.First(&user, "gid=?", user_gid).RecordNotFound() {
+	user := User{}
+	if db.First(&user, "gid=?", userGID).RecordNotFound() {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	var group Group
-	if db.Preload("Users").First(&group, "id=?", group_id).RecordNotFound() {
+	group := Group{}
+	if db.Preload("Users").First(&group, "id=?", groupID).RecordNotFound() {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -146,13 +148,13 @@ func main() {
 	db.AutoMigrate(&User{}, &Group{})
 
 	r := mux.NewRouter()
-	r.HandleFunc("/register", register).Methods("POST")
-	r.HandleFunc("/user", getUser).Methods("GET")
+	r.HandleFunc("/register", register).Methods(http.MethodPost)
+	r.HandleFunc("/user", getUser).Methods(http.MethodGet)
 
-	r.HandleFunc("/group", createGroup).Methods("POST")
-	r.HandleFunc("/group", getGroup).Methods("GET")
+	r.HandleFunc("/group", createGroup).Methods(http.MethodPost)
+	r.HandleFunc("/group", getGroup).Methods(http.MethodGet)
 
-	r.HandleFunc("/group/join", joinGroup).Methods("POST")
+	r.HandleFunc("/group/join", joinGroup).Methods(http.MethodPost)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
