@@ -1,24 +1,38 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'dart:convert' as convert;
 
 import 'package:cofty/models.dart';
 
-final apiUrl = 'https://cofty-api-smepkzphmq-uc.a.run.app';
+final apiUrl = 'http://34.70.72.3:3000';
 
 final headers = {
   'Content-Type': 'application/json',
-  'Accept': 'application/json'
+  'Accept': 'application/json',
+  'Prefer': 'return=representation'
 };
 
-Future<User> registerUser(User user) async {
+final random = Random();
+
+Future<User> getUser(String gid) async {
   var res = await http.get(
-    apiUrl + '/users?gid=eq.${user.gid}',
+    apiUrl + '/users?gid=eq.${gid}',
   );
 
   var payload = convert.jsonDecode(res.body);
-  return User.fromJson(payload[0]);
+  return payload.length > 0 ? User.fromJson(payload[0]) : null;
+}
+
+Future<User> registerUser(User user) async {
+  var body = user.toJson();
+
+  var res = await http.post(apiUrl + '/users',
+      body: convert.jsonEncode(body), headers: headers);
+
+  var payload = convert.jsonDecode(res.body);
+  return payload.length > 0 ? User.fromJson(payload[0]) : null;
 }
 
 Future<List<Group>> getUserGroups(User user) async {
@@ -32,6 +46,41 @@ Future<List<Group>> getUserGroups(User user) async {
       .map((group) => Group.fromJson(group))
       .toList()
       .cast<Group>();
+}
+
+// is this needed?
+Future<Group> createGroup(Group group) async {
+  var body = group.toJson();
+
+  var res = await http.post(apiUrl + '/groups',
+      body: convert.jsonEncode(body), headers: headers);
+
+  var payload = convert.jsonDecode(res.body);
+  return payload.length > 0 ? Group.fromJson(payload[0]) : null;
+}
+
+// TODO: move to backend
+Future<Group> createGroupWithName(String groupName) async {
+  var charCodes = List<int>.generate(6, (_) => random.nextInt(25) + 65);
+  String code = String.fromCharCodes(charCodes);
+
+  var body = {'name': groupName, 'access_code': code};
+
+  var res = await http.post(apiUrl + '/groups',
+      body: convert.jsonEncode(body), headers: headers);
+
+  var payload = convert.jsonDecode(res.body);
+  return payload.length > 0 ? Group.fromJson(payload[0]) : null;
+}
+
+Future<List<User>> getGroupUsers(Group group) async {
+  var res =
+      await http.get(apiUrl + '/groups?select=users(*)&id=eq.${group.id}');
+
+  var payload = convert.jsonDecode(res.body);
+  var group_users = payload[0]['users'];
+
+  return group_users.map((user) => User.fromJson(user)).toList().cast<User>();
 }
 
 Future<bool> joinGroup(User user, Group group) async {
@@ -48,4 +97,34 @@ Future<bool> joinGroupWithCode(User user, String accessCode) async {
   Group group = Group.fromJson(convert.jsonDecode(res.body)[0]);
 
   return joinGroup(user, group);
+}
+
+Future<List<Obligation>> getObligations(User user) async {
+  var res = await http
+      .get(apiUrl + '/users?select=obligations(*)&gid=eq.${user.gid}');
+
+  var payload = convert.jsonDecode(res.body);
+  var obligations = payload[0]['obligations'];
+
+  return obligations
+      .map((o) => Obligation.fromJson(o))
+      .toList()
+      .cast<Obligation>();
+}
+
+Future<Obligation> addObligation(Obligation obligation) async {
+  var body = obligation.toJson();
+
+  var res = await http.post(apiUrl + '/obligations',
+      body: convert.jsonEncode(body), headers: headers);
+
+  var payload = convert.jsonDecode(res.body);
+  return payload.length > 0 ? Obligation.fromJson(payload[0]) : null;
+}
+
+Future<bool> deleteObligation(Obligation obligation) async {
+  var res = await http.delete(apiUrl +
+      '/obligations?user_id=eq.${obligation.userId}&day=eq.${obligation.day}&hour=eq.${obligation.hour}');
+
+  return true;
 }

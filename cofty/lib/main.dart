@@ -1,6 +1,14 @@
+import 'package:cofty/availability_view.dart';
 import 'package:cofty/crud_service.dart' as crud;
+import 'package:cofty/group_view.dart';
+import 'package:cofty/groups_menu.dart';
 import 'package:cofty/models.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
 
 void main() => runApp(MyApp());
 
@@ -22,13 +30,13 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: GroupsMenu(title: 'Flutter Demo Home Page'),
+      home: AppWidget(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class GroupsMenu extends StatefulWidget {
-  GroupsMenu({Key key, this.title}) : super(key: key);
+class AppWidget extends StatefulWidget {
+  AppWidget({Key key, this.title}) : super(key: key);
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -42,97 +50,65 @@ class GroupsMenu extends StatefulWidget {
   final String title;
 
   @override
-  _GroupsMenuState createState() => _GroupsMenuState();
+  _AppWidgetState createState() => _AppWidgetState();
 }
 
-class _GroupsMenuState extends State<GroupsMenu> {
-  final User user = User("a000", "Alex Shadley");
-  final codeController = TextEditingController();
+class _AppWidgetState extends State<AppWidget> {
+  GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  User user;
 
-  int _counter = 0;
-  List<Group> groups = [];
+  int navIndex = 0;
+
+  Widget renderBody() {
+    if (this.user == null) {
+      return Text('Loading');
+    }
+
+    if (this.navIndex == 0) {
+      return GroupsMenu(user: this.user);
+    } else {
+      return AvailabilityView(user: this.user);
+    }
+  }
 
   @override
   void initState() {
-    crud.getUserGroups(this.user).then((groups) {
-      setState(() {
-        this.groups = groups;
-      });
+    super.initState();
+
+    _firebaseMessaging.requestNotificationPermissions();
+
+    googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount acct) async {
+      var user = await crud.getUser(acct.id);
+      if (user != null) {
+        this.user = user;
+      } else {
+        this.user = await crud.registerUser(User(
+            acct.id, acct.displayName, await _firebaseMessaging.getToken()));
+      }
     });
+
+    googleSignIn.signIn();
   }
 
-  void _incrementCounter() {
+  updateNavIndex(int index) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  Future<void> _addGroupDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false, // user must tap button!
-      builder: (BuildContext context) {
-        return AlertDialog(
-            title: Text('Enter your 6-digit group code'),
-            content: TextField(
-              controller: codeController,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(
-                  border: OutlineInputBorder(), labelText: 'Group code'),
-            ),
-            actions: <Widget>[
-              FlatButton(
-                  child: Text('Join'),
-                  onPressed: () {
-                    crud
-                        .joinGroupWithCode(user, codeController.text)
-                        .then((status) {
-                      Navigator.of(context).pop();
-                    });
-                  })
-            ]);
-      },
-
-      // refresh groups after adding
-    ).then((_) {
-      crud.getUserGroups(user).then((groups) {
-        setState(() {
-          this.groups = groups;
-        });
-      });
+      this.navIndex = index;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the GroupsMenu object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: ListView(
-        children: this
-            .groups
-            .map((group) => ListTile(title: Text(group.accessCode)))
-            .toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addGroupDialog,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      body: renderBody(),
+      bottomNavigationBar: BottomNavigationBar(
+          currentIndex: this.navIndex,
+          onTap: updateNavIndex,
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+                icon: Icon(Icons.group), title: Text('Groups')),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_today), title: Text('Availability'))
+          ]),
     );
   }
 }
