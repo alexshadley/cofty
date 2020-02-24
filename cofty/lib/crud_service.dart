@@ -128,3 +128,23 @@ Future<bool> deleteObligation(Obligation obligation) async {
 
   return true;
 }
+
+Future<List<Session>> getPendingSessions(User user) async {
+  var res =
+      await http.get(apiUrl + '/users?select=sessions(*)&gid=eq.${user.gid}');
+
+  var payload = convert.jsonDecode(res.body);
+  var sessions = payload[0]['sessions'];
+
+  return sessions.map(Session.fromJson).toList().cast<Session>();
+}
+
+Future<List<User>> getSessionUsers(Session session) async {
+  var res =
+      await http.get(apiUrl + '/sessions?select=users(*)&id=eq.${session.id}');
+
+  var payload = convert.jsonDecode(res.body);
+  var session_users = payload[0]['users'];
+
+  return session_users.map(User.fromJson).toList().cast<User>();
+}

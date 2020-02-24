@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "110647855444",
+    "firebase_url": "https://cofty-268422.firebaseio.com",
+    "project_id": "cofty-268422",
+    "storage_bucket": "cofty-268422.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:110647855444:android:8b98a1abb0b1c5c710e0c1",
+        "android_client_info": {
+          "package_name": "ai.cofty"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "110647855444-21s02cuue9nbsclt83qk9c9veqk1pse5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ai.cofty",
+            "certificate_hash": "75dde34aae356a42372ad7a8e37ba6c23a1d2e61"
+          }
+        },
+        {
+          "client_id": "110647855444-2spv2cjun2686asua6t4urj7ajoam6k0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9WhdgzieoPgi6k28GnAMkVxewfXEZydQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "110647855444-2spv2cjun2686asua6t4urj7ajoam6k0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

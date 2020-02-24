@@ -1,5 +1,15 @@
 import 'dart:convert' as convert;
 
+final dayName = {
+  0: 'Monday',
+  1: 'Tuesday',
+  2: 'Wednesday',
+  3: 'Thursday',
+  4: 'Friday',
+  5: 'Saturday',
+  6: 'Sunday'
+};
+
 class User {
   final String gid;
   final String name;
@@ -68,5 +78,35 @@ class Obligation {
             'day': this.day,
             'hour': this.hour
           };
+  }
+}
+
+class Session {
+  final int id;
+  final DateTime day;
+  final int hour;
+  final bool accepted;
+  final bool pending;
+
+  Session(int id, DateTime day, int hour, bool accepted, bool pending)
+      : this.id = id,
+        this.day = day,
+        this.hour = hour,
+        this.accepted = accepted,
+        this.pending = pending;
+
+  static Session fromJson(payload) {
+    return Session(payload['id'], DateTime.parse(payload['day']),
+        payload['hour'], payload['accepted'], payload['pending']);
+  }
+
+  dynamic toJson() {
+    return {
+      'id': this.id,
+      'day': this.day,
+      'hour': this.hour,
+      'accepted': this.accepted,
+      'pending': this.pending,
+    };
   }
 }

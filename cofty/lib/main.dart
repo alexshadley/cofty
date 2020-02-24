@@ -8,6 +8,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'session_view.dart';
+
 final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
 
 void main() => runApp(MyApp());
@@ -65,6 +67,8 @@ class _AppWidgetState extends State<AppWidget> {
     }
 
     if (this.navIndex == 0) {
+      return SessionView(user: this.user);
+    } else if (this.navIndex == 1) {
       return GroupsMenu(user: this.user);
     } else {
       return AvailabilityView(user: this.user);
@@ -104,6 +108,8 @@ class _AppWidgetState extends State<AppWidget> {
           currentIndex: this.navIndex,
           onTap: updateNavIndex,
           items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+                icon: Icon(Icons.local_cafe), title: Text('Dates')),
             BottomNavigationBarItem(
                 icon: Icon(Icons.group), title: Text('Groups')),
             BottomNavigationBarItem(
