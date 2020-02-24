@@ -6,7 +6,7 @@ import 'dart:convert' as convert;
 
 import 'package:cofty/models.dart';
 
-final apiUrl = 'http://34.70.72.3:3000';
+final apiUrl = 'http://35.209.226.203:3000';
 
 final headers = {
   'Content-Type': 'application/json',

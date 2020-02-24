@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"os"
 	"time"
 
 	_ "github.com/lib/pq"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
+	"github.com/op/go-logging"
 	"google.golang.org/api/option"
 )
 
@@ -34,8 +35,17 @@ func (s *StringSet) Has(v string) bool {
 var db *sql.DB
 var err error
 
+var log = logging.MustGetLogger("example")
+
+// Example format string. Everything except the message has a custom color
+// which is dependent on the log level. Many fields have a custom output
+// formatting too, eg. the time returns the hour down to the milli second.
+var format = logging.MustStringFormatter(
+	`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
+)
+
 func schedule() {
-	fmt.Println("scheduling")
+	log.Info("Starting scheduling round")
 
 	rows, err := db.Query("SELECT user_id FROM user_sessions, sessions WHERE sessions.pending = true;")
 	if err != nil {
@@ -117,6 +127,7 @@ func schedule() {
 
 					date, hour, err := findGap(user1Obligations, user2Obligations, 3)
 					if err != nil {
+						log.Infof("Could not find gap for users %s and %s", user1.Gid, user2.Gid)
 						break
 					}
 
@@ -138,7 +149,7 @@ func schedule() {
 						log.Fatal(err)
 					}
 
-					fmt.Printf("Users %s and %s scheduled\n", user1.Gid, user2.Gid)
+					log.Infof("Users %s and %s scheduled\n", user1.Gid, user2.Gid)
 					scheduled.Add(user1.Gid)
 					scheduled.Add(user2.Gid)
 
@@ -152,12 +163,14 @@ func schedule() {
 }
 
 func schedulerWorker(ticker *time.Ticker, quit chan struct{}) {
+	schedule()
+
 	for {
 		select {
 		case <-ticker.C:
 			schedule()
 		case <-quit:
-			fmt.Println("Quitting")
+			log.Infof("Scheduler quitting\n")
 			ticker.Stop()
 			return
 		}
@@ -168,7 +181,11 @@ var messagingClient *messaging.Client
 var messagingCtx context.Context
 
 func main() {
-	opt := option.WithCredentialsFile("/home/alex/Downloads/cofty-268422-firebase-adminsdk-wcpxt-8fe6ad9c1a.json")
+	backend := logging.NewLogBackend(os.Stdout, "", 0)
+	formatter := logging.NewBackendFormatter(backend, format)
+	logging.SetBackend(formatter)
+
+	opt := option.WithCredentialsFile("./cofty_firebase_creds.json")
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		fmt.Printf("error initializing app: %v", err)
@@ -188,9 +205,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	schedule()
-
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(5 * time.Minute)
 	quit := make(chan struct{})
 	go schedulerWorker(ticker, quit)
 
@@ -211,9 +226,9 @@ func sendSessionNotification(user User) {
 	// registration token.
 	response, err := messagingClient.Send(messagingCtx, message)
 	if err != nil {
-		fmt.Printf(err.Error())
+		log.Errorf(err.Error())
 	} else {
 		// Response is a message ID string.
-		fmt.Println("Successfully sent message:", response)
+		log.Infof("Successfully sent message:", response)
 	}
 }

@@ -46,6 +46,11 @@ class _GroupsMenuState extends State<GroupsMenu> {
             ),
             actions: <Widget>[
               FlatButton(
+                  child: Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  }),
+              FlatButton(
                   child: Text('Create'),
                   onPressed: () {
                     crud
@@ -81,6 +86,11 @@ class _GroupsMenuState extends State<GroupsMenu> {
                   border: OutlineInputBorder(), labelText: 'Group code'),
             ),
             actions: <Widget>[
+              FlatButton(
+                  child: Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  }),
               FlatButton(
                   child: Text('Join'),
                   onPressed: () {

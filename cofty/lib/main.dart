@@ -84,10 +84,11 @@ class _AppWidgetState extends State<AppWidget> {
     googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount acct) async {
       var user = await crud.getUser(acct.id);
       if (user != null) {
-        this.user = user;
+        setState(() => this.user = user);
       } else {
-        this.user = await crud.registerUser(User(
+        user = await crud.registerUser(User(
             acct.id, acct.displayName, await _firebaseMessaging.getToken()));
+        setState(() => this.user = user);
       }
     });
 
