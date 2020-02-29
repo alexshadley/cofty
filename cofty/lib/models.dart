@@ -15,10 +15,15 @@ class User {
   final String name;
   final String messagingToken;
 
+  Set<int> sessionsAccepted;
+  Set<int> sessionsRejected;
+
   User(String gid, String name, String messagingToken)
       : this.gid = gid,
         this.name = name,
-        this.messagingToken = messagingToken;
+        this.messagingToken = messagingToken,
+        this.sessionsAccepted = new Set(),
+        this.sessionsRejected = new Set();
 
   static User fromJson(payload) {
     return User(payload['gid'], payload['name'], payload['messaging_token']);
@@ -81,23 +86,26 @@ class Obligation {
   }
 }
 
+/*
+Ok why does Google suck at making languages? No ADTs? Can't get the string
+value of enums? Don't even get me started on Go's type system. I guess I'm the
+sucker for using Google languages throughout this project =/
+*/
 class Session {
   final int id;
   final DateTime day;
   final int hour;
-  final bool accepted;
-  final bool pending;
+  final String status;
 
-  Session(int id, DateTime day, int hour, bool accepted, bool pending)
+  Session(int id, DateTime day, int hour, String status)
       : this.id = id,
         this.day = day,
         this.hour = hour,
-        this.accepted = accepted,
-        this.pending = pending;
+        this.status = status;
 
   static Session fromJson(payload) {
     return Session(payload['id'], DateTime.parse(payload['day']),
-        payload['hour'], payload['accepted'], payload['pending']);
+        payload['hour'], payload['status']);
   }
 
   dynamic toJson() {
@@ -105,8 +113,31 @@ class Session {
       'id': this.id,
       'day': this.day,
       'hour': this.hour,
-      'accepted': this.accepted,
-      'pending': this.pending,
+      'status': this.status,
+    };
+  }
+}
+
+class UserSession {
+  final String userId;
+  final int groupId;
+  final String status;
+
+  UserSession(String userId, int groupId, String status)
+      : this.userId = userId,
+        this.groupId = groupId,
+        this.status = status;
+
+  static UserSession fromJson(payload) {
+    return UserSession(
+        payload['user_id'], payload['group_id'], payload['status']);
+  }
+
+  dynamic toJson() {
+    return {
+      'user_id': this.userId,
+      'group_id': this.groupId,
+      'status': this.status,
     };
   }
 }

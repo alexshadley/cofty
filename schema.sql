@@ -31,15 +31,15 @@ CREATE TABLE obligations (
 
 CREATE TABLE sessions (
   id serial PRIMARY KEY
-, day date
-, hour int
-, accepted boolean
-, pending boolean
+, day date NOT NULL
+, hour int NOT NULL
+, status text NOT NULL
 );
 
 CREATE TABLE user_sessions (
   user_id text
 , session_id int
+, status text NOT NULL
 , FOREIGN KEY (user_id) REFERENCES users(gid) ON UPDATE CASCADE ON DELETE CASCADE
 , FOREIGN KEY (session_id) REFERENCES sessions(id) ON UPDATE CASCADE ON DELETE CASCADE
 , CONSTRAINT user_sessions_pkey PRIMARY KEY (user_id, session_id)  -- explicit pk

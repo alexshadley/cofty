@@ -6,7 +6,7 @@ import 'dart:convert' as convert;
 
 import 'package:cofty/models.dart';
 
-final apiUrl = 'http://35.209.4.61:3000';
+final apiUrl = 'http://35.209.4.61:8080';
 
 final headers = {
   'Content-Type': 'application/json',
@@ -16,13 +16,31 @@ final headers = {
 
 final random = Random();
 
+bool ok(http.Response response) {
+  return 200 <= response.statusCode && response.statusCode < 300;
+}
+
 Future<User> getUser(String gid) async {
   var res = await http.get(
-    apiUrl + '/users?gid=eq.${gid}',
+    apiUrl + '/users?select=*,user_sessions(session_id, status)&gid=eq.${gid}',
   );
 
   var payload = convert.jsonDecode(res.body);
-  return payload.length > 0 ? User.fromJson(payload[0]) : null;
+  if (payload.length == 0) {
+    return null;
+  }
+
+  User user = User.fromJson(payload[0]);
+  user.sessionsAccepted.addAll(payload[0]['user_sessions']
+      .where((s) => s['status'] == 'accepted')
+      .map((s) => s['session_id'])
+      .cast<int>());
+  user.sessionsRejected.addAll(payload[0]['user_sessions']
+      .where((s) => s['status'] == 'rejected')
+      .map((s) => s['session_id'])
+      .cast<int>());
+
+  return user;
 }
 
 Future<User> registerUser(User user) async {
@@ -147,4 +165,24 @@ Future<List<User>> getSessionUsers(Session session) async {
   var session_users = payload[0]['users'];
 
   return session_users.map(User.fromJson).toList().cast<User>();
+}
+
+/*Future<List<Session>> getUserAttending(User user) async {
+  var res = await http.get(apiUrl +
+      '/user_sessions?select=sessions(*)&user_id=eq.${user.gid}&status=eq.accepted');
+
+  var payload = convert.jsonDecode(res.body);
+
+  return payload
+      .map((p) => Session.fromJson(p['sessions']))
+      .toList()
+      .cast<Session>();
+}*/
+
+Future<bool> attendSession(User user, Session session, bool attending) async {
+  var status = attending ? 'accepted' : 'rejected';
+  var res = await http.get(apiUrl +
+      '/attendSession?user_id=${user.gid}&session_id=${session.id}&status=$status');
+
+  return true;
 }

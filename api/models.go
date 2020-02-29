@@ -14,7 +14,13 @@ type Group struct {
 
 type Obligation struct {
 	ID     int
-	userID string
+	UserID string
 	Day    int
 	Hour   int
+}
+
+type UserSession struct {
+	UserID    string `db:"user_id"`
+	SessionID int    `db:"session_id"`
+	Status    string
 }

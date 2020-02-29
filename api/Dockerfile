@@ -47,5 +47,4 @@ COPY cofty_firebase_creds.json ./
 COPY container_startup.sh ./
 
 COPY --from=builder /app/main ./
-#CMD ["./main"]
 CMD ["./container_startup.sh"]
