@@ -49,6 +49,13 @@ func addUserToSession(user User, sessionID int) {
 	}
 }
 
+func getAvailability(user User) Availability {
+	return Availability{
+		obligations: getObligations(user),
+		sessions:    getSessions(user),
+	}
+}
+
 func getObligations(user User) []Obligation {
 	obligations := []Obligation{}
 	err := db.Select(&obligations, "SELECT * FROM obligations WHERE user_id = $1;", user.Gid)
@@ -57,4 +64,14 @@ func getObligations(user User) []Obligation {
 	}
 
 	return obligations
+}
+
+func getSessions(user User) []Session {
+	sessions := []Session{}
+	err := db.Select(&sessions, "SELECT sessions.* FROM sessions JOIN user_sessions ON sessions.id = user_sessions.session_id WHERE user_id = $1;", user.Gid)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return sessions
 }

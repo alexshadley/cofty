@@ -100,7 +100,7 @@ class _SessionViewState extends State<SessionView> {
                 flex: 5,
                 child: ListTile(
                   title: Text(
-                      '${dayName[session.day.weekday - 1]} at ${session.hour} with ${getSessionUserText(session)}'),
+                      '${dayName[session.day.weekday - 1]} at ${hourName[session.hour]} with ${getSessionUserText(session)}'),
                   subtitle: Text(
                       'On ${DateFormat.MMMMd().format(session.day)} -- ${sessionStatusText(session)}'),
                 )),

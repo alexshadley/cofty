@@ -63,7 +63,7 @@ class _AvailabilityViewState extends State<AvailabilityView> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Availability'),
+          title: Text('Weekly Availability'),
         ),
         body: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -89,7 +89,7 @@ class _AvailabilityViewState extends State<AvailabilityView> {
                             onTap: () => toggleHour(this.day, h),
                             child: Container(
                                 child: Center(
-                                    child: Text('$h',
+                                    child: Text(hourName[h],
                                         style: DefaultTextStyle.of(context)
                                             .style
                                             .apply(color: Colors.white)

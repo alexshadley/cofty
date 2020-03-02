@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 type User struct {
 	Gid            string `json:"gid" gorm:"PRIMARY_KEY"`
 	Name           string `json:"name"`
@@ -23,4 +25,11 @@ type UserSession struct {
 	UserID    string `db:"user_id"`
 	SessionID int    `db:"session_id"`
 	Status    string
+}
+
+type Session struct {
+	ID     int
+	Day    time.Time
+	Hour   int
+	Status string
 }

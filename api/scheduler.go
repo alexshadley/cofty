@@ -177,10 +177,10 @@ func schedule() {
 				if user1.Gid != user2.Gid && scheduled.Count(user2.Gid) < maxSessions &&
 					scheduled.CountPair(user1.Gid, user2.Gid) < maxPairings {
 					// get user obligations
-					user1Obligations := getObligations(user1)
-					user2Obligations := getObligations(user2)
+					user1Avail := getAvailability(user1)
+					user2Avail := getAvailability(user2)
 
-					date, hour, err := findGap(user1Obligations, user2Obligations, 3)
+					date, hour, err := findGap(user1Avail, user2Avail, 3)
 					if err != nil {
 						log.Infof("Could not find gap for users %s and %s", user1.Gid, user2.Gid)
 						break
@@ -203,9 +203,39 @@ func schedule() {
 	}
 }
 
-func hasFree(obligations []Obligation, day int, hour int) bool {
-	for _, o := range obligations {
-		if o.Day == day && o.Hour == hour {
+type Availability struct {
+	obligations []Obligation
+	sessions    []Session
+}
+
+func sameDate(t1 time.Time, t2 time.Time) bool {
+	year1, month1, day1 := t1.Date()
+	year2, month2, day2 := t2.Date()
+
+	return (year1 == year2) && (month1 == month2) && (day1 == day2)
+}
+
+func getWeekday(t time.Time) int {
+	weekday := int(t.Weekday()) - 1
+	if weekday == -1 {
+		weekday = 6
+	}
+
+	return weekday
+}
+
+func (a *Availability) hasFree(day time.Time, hour int) bool {
+	// Don't schedule multiple coffees per day
+	for _, s := range a.sessions {
+		if sameDate(s.Day, day) {
+			return false
+		}
+	}
+
+	weekday := getWeekday(day)
+
+	for _, o := range a.obligations {
+		if weekday == o.Day && hour == o.Hour {
 			return false
 		}
 	}
@@ -213,17 +243,14 @@ func hasFree(obligations []Obligation, day int, hour int) bool {
 }
 
 // finds a time to schedule, between tomorrow and maxInAdvance, inclusive
-func findGap(user1Obs []Obligation, user2Obs []Obligation, maxInAdvance int) (time.Time, int, error) {
+func findGap(user1Avail Availability, user2Avail Availability, maxInAdvance int) (time.Time, int, error) {
 	now := time.Now().In(time.UTC)
 	for daysAhead := 1; daysAhead <= maxInAdvance; daysAhead++ {
-		weekday := int(now.AddDate(0, 0, daysAhead).Weekday()) - 1
-		if weekday == -1 {
-			weekday = 6
-		}
+		day := now.AddDate(0, 0, daysAhead)
 
 		for hour := 8; hour <= 17; hour++ {
-			if hasFree(user1Obs, weekday, hour) && hasFree(user2Obs, weekday, hour) {
-				return now.AddDate(0, 0, daysAhead), hour, nil
+			if user1Avail.hasFree(day, hour) && user2Avail.hasFree(day, hour) {
+				return day, hour, nil
 			}
 		}
 	}
