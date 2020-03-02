@@ -222,7 +222,7 @@ func findGap(user1Obs []Obligation, user2Obs []Obligation, maxInAdvance int) (ti
 		}
 
 		for hour := 8; hour <= 17; hour++ {
-			if hasFree(user1Obs, weekday, hour) && hasFree(user1Obs, weekday, hour) {
+			if hasFree(user1Obs, weekday, hour) && hasFree(user2Obs, weekday, hour) {
 				return now.AddDate(0, 0, daysAhead), hour, nil
 			}
 		}
