@@ -2,24 +2,81 @@ package main
 
 import (
 	"errors"
+	"math/rand"
 	"time"
 )
 
-type StringSet struct {
-	vals map[string]struct{}
+// how many pending sessions a user can have
+var maxSessions = 2
+
+// how many pending sessions a user can have with another user
+var maxPairings = 1
+
+type MultiSet struct {
+	vals map[string]int
 }
 
-func newStringSet() *StringSet {
-	return &StringSet{vals: make(map[string]struct{})}
+func newMultiSet() *MultiSet {
+	return &MultiSet{vals: make(map[string]int)}
 }
 
-func (s *StringSet) Add(v string) {
-	s.vals[v] = struct{}{}
+func (s *MultiSet) Add(v string) {
+	if _, ok := s.vals[v]; ok {
+		s.vals[v]++
+	} else {
+		s.vals[v] = 1
+	}
 }
 
-func (s *StringSet) Has(v string) bool {
+func (s *MultiSet) Has(v string) bool {
 	_, ok := s.vals[v]
 	return ok
+}
+
+func (s *MultiSet) Count(v string) int {
+	count, ok := s.vals[v]
+	if ok {
+		return count
+	} else {
+		return 0
+	}
+}
+
+func (s *MultiSet) Size() int {
+	return len(s.vals)
+}
+
+type SessionSet struct {
+	vals map[string]*MultiSet
+}
+
+func newSessionSet() *SessionSet {
+	return &SessionSet{vals: make(map[string]*MultiSet)}
+}
+
+func (s *SessionSet) Add(userID string, otherID string) {
+	if _, ok := s.vals[userID]; ok {
+		s.vals[userID].Add(otherID)
+	} else {
+		set := newMultiSet()
+		set.Add(otherID)
+		s.vals[userID] = set
+	}
+}
+
+func (s *SessionSet) CountPair(userID string, otherID string) int {
+	if _, ok := s.vals[userID]; ok {
+		return s.vals[userID].Count(otherID)
+	} else {
+		return 0
+	}
+}
+
+func (s *SessionSet) Count(userID string) int {
+	if _, ok := s.vals[userID]; ok {
+		return s.vals[userID].Size()
+	}
+	return 0
 }
 
 func schedulerWorker(ticker *time.Ticker, quit chan struct{}) {
@@ -40,21 +97,46 @@ func schedulerWorker(ticker *time.Ticker, quit chan struct{}) {
 func schedule() {
 	log.Info("Starting scheduling round")
 
-	rows, err := db.Query("SELECT user_id FROM user_sessions, sessions;")
+	rows, err := db.Query("SELECT session_id, user_id FROM user_sessions, sessions WHERE sessions.day >= $1 AND user_sessions.status != 'rejected' ORDER BY session_id;", time.Now().In(time.UTC))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// keeps track of all users so far scheduled
-	scheduled := newStringSet()
+	scheduled := newSessionSet()
+
+	inSession := newMultiSet()
+	userID := ""
+	lastSessionID := ""
+	sessionID := ""
 	for rows.Next() {
-		var id string
-		err := rows.Scan(&id)
+		err := rows.Scan(&sessionID, &userID)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		scheduled.Add(id)
+		if sessionID == lastSessionID || lastSessionID == "" {
+			inSession.Add(userID)
+		} else {
+			for user, _ := range inSession.vals {
+				for other, _ := range inSession.vals {
+					if user != other {
+						scheduled.Add(user, other)
+					}
+				}
+			}
+			inSession = newMultiSet()
+		}
+		lastSessionID = sessionID
+	}
+
+	// one last time, since last sessionID won't change
+	for user, _ := range inSession.vals {
+		for other, _ := range inSession.vals {
+			if user != other {
+				scheduled.Add(user, other)
+			}
+		}
 	}
 
 	rows, err = db.Query("SELECT group_id, users.* FROM user_groups LEFT JOIN users ON user_groups.user_id = users.gid;")
@@ -80,43 +162,23 @@ func schedule() {
 
 	for _, users := range groupUsers {
 		for _, user1 := range users {
-			if scheduled.Has(user1.Gid) {
+			if scheduled.Count(user1.Gid) >= maxSessions {
 				continue
 			}
 
-			for _, user2 := range users {
-				if user1.Gid != user2.Gid && !scheduled.Has(user2.Gid) {
+			// construct an ordering of other users to attempt to schedule with. For now, random is fine
+			prefList := make([]User, len(users))
+			copy(prefList, users)
+			rand.Seed(time.Now().UnixNano())
+			rand.Shuffle(len(prefList), func(i, j int) { prefList[i], prefList[j] = prefList[j], prefList[i] })
 
+			for _, user2 := range prefList {
+
+				if user1.Gid != user2.Gid && scheduled.Count(user2.Gid) < maxSessions &&
+					scheduled.CountPair(user1.Gid, user2.Gid) < maxPairings {
 					// get user obligations
-					rows, err = db.Query("SELECT * FROM obligations WHERE user_id = $1;", user1.Gid)
-					if err != nil {
-						log.Fatal(err)
-					}
-					user1Obligations := make([]Obligation, 0)
-					for rows.Next() {
-						o := Obligation{}
-						err := rows.Scan(&o.ID, &o.UserID, &o.Day, &o.Hour)
-						if err != nil {
-							log.Fatal(err)
-						}
-
-						user1Obligations = append(user1Obligations, o)
-					}
-
-					rows, err = db.Query("SELECT * FROM obligations WHERE user_id = $1;", user2.Gid)
-					if err != nil {
-						log.Fatal(err)
-					}
-					user2Obligations := make([]Obligation, 0)
-					for rows.Next() {
-						o := Obligation{}
-						err := rows.Scan(&o.ID, &o.UserID, &o.Day, &o.Hour)
-						if err != nil {
-							log.Fatal(err)
-						}
-
-						user2Obligations = append(user2Obligations, o)
-					}
+					user1Obligations := getObligations(user1)
+					user2Obligations := getObligations(user2)
 
 					date, hour, err := findGap(user1Obligations, user2Obligations, 3)
 					if err != nil {
@@ -124,27 +186,13 @@ func schedule() {
 						break
 					}
 
-					sessionID := 0
-					// TODO: should this use exec?
-					err = db.QueryRow("INSERT INTO sessions(day, hour, status) VALUES ($1, $2, $3) RETURNING id;", date, hour, "pending").Scan(&sessionID)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					_, err = db.Exec("INSERT INTO user_sessions(user_id, session_id) VALUES ($1, $2);",
-						user1.Gid, sessionID)
-					if err != nil {
-						log.Fatal(err)
-					}
-					_, err = db.Exec("INSERT INTO user_sessions(user_id, session_id) VALUES ($1, $2);",
-						user2.Gid, sessionID)
-					if err != nil {
-						log.Fatal(err)
-					}
+					sessionID := addSession(date, hour)
+					addUserToSession(user1, sessionID)
+					addUserToSession(user2, sessionID)
 
 					log.Infof("Users %s and %s scheduled\n", user1.Gid, user2.Gid)
-					scheduled.Add(user1.Gid)
-					scheduled.Add(user2.Gid)
+					scheduled.Add(user1.Gid, user2.Gid)
+					scheduled.Add(user2.Gid, user1.Gid)
 
 					sendSessionNotification(user1)
 					sendSessionNotification(user2)

@@ -33,10 +33,28 @@ func getSessionUsers(sessionID int) []UserSession {
 func addSession(date time.Time, hour int) int {
 	sessionID := 0
 	// TODO: should this use exec?
-	err = db.QueryRow("INSERT INTO sessions(day, hour, accepted, pending) VALUES ($1, $2, $3, $4) RETURNING id;", date, hour, "pending").Scan(&sessionID)
+	err = db.QueryRow("INSERT INTO sessions(day, hour, status) VALUES ($1, $2, $3) RETURNING id;", date, hour, "pending").Scan(&sessionID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	return sessionID
+}
+
+func addUserToSession(user User, sessionID int) {
+	_, err = db.Exec("INSERT INTO user_sessions(user_id, session_id, status) VALUES ($1, $2, 'pending');",
+		user.Gid, sessionID)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getObligations(user User) []Obligation {
+	obligations := []Obligation{}
+	err := db.Select(&obligations, "SELECT * FROM obligations WHERE user_id = $1;", user.Gid)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return obligations
 }

@@ -14,7 +14,7 @@ type Group struct {
 
 type Obligation struct {
 	ID     int
-	UserID string
+	UserID string `db:"user_id"`
 	Day    int
 	Hour   int
 }
