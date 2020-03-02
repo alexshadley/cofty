@@ -7,7 +7,7 @@ import (
 )
 
 // how many pending sessions a user can have
-var maxSessions = 2
+var maxSessions = 1
 
 // how many pending sessions a user can have with another user
 var maxPairings = 1
@@ -180,7 +180,7 @@ func schedule() {
 					user1Avail := getAvailability(user1)
 					user2Avail := getAvailability(user2)
 
-					date, hour, err := findGap(user1Avail, user2Avail, 3)
+					date, hour, err := findGap(user1Avail, user2Avail, 5)
 					if err != nil {
 						log.Infof("Could not find gap for users %s and %s", user1.Gid, user2.Gid)
 						break
