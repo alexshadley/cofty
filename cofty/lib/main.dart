@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'calendar_view.dart';
 import 'session_view.dart';
 
 final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
@@ -71,7 +72,7 @@ class _AppWidgetState extends State<AppWidget> {
     } else if (this.navIndex == 1) {
       return GroupsMenu(user: this.user);
     } else {
-      return AvailabilityView(user: this.user);
+      return CalendarView(user: this.user);
     }
   }
 
